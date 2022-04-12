@@ -1,0 +1,1 @@
+# Milrem Robotics Summer School 2022 assignment
