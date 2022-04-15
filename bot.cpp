@@ -6,6 +6,25 @@
 #include <utility>
 
 using namespace std;
+using Point = pair<int, int>;
+
+const double pi = 3.141592653589793238462643383279502884197169399375105820974944;
+
+pair<int, int> difference(Point point1, Point point2) {
+    return pair(point1.first - point2.first, point1.second - point2.second);
+}
+
+double distance(Point point1, Point point2) {
+    auto diff = difference(point2, point1);
+    return sqrt(pow(diff.first, 2) + pow(diff.second, 2));
+}
+
+double angleFrom(Point point1, Point point2, Point point3) {
+    double a = distance(point2, point3);
+    double b = distance(point2, point1);
+    double c = distance(point1, point3);
+    return acos((pow(a, 2) + pow(b, 2) - pow(c, 2)) / 2 * a * b);
+}
 
 class Track {
 
@@ -66,13 +85,17 @@ class Racer {
     pair<int, int> previousCheckpoint, currentCheckpoint, nextCheckpoint;
 
     double speedAngleMultiplier(int angle) {
-        double rad = angle * 3.14149 / 180;
-        return (cos(rad) + 1) / 2;
+        double rad = angle * pi / 180;
+        auto multiplier = (cos(rad) + 1) / 2;
+        cerr << "angleThrottle: " << multiplier << endl;
+        return multiplier;
     }
 
     double aheadOfCheckpointThrottle(int distance) {
         const int breakingDistance = 1000;
-        return min(distance, breakingDistance) / breakingDistance;
+        auto multiplier = (double) min(distance, breakingDistance) / breakingDistance;
+        cerr << "distThrottle: " << multiplier << endl;
+        return multiplier;
     }
 
     double speedMultiplier(int distance, int angle) {
@@ -81,12 +104,12 @@ class Racer {
 
     string outputSpeed(int distance, int angle) {
         string output;
-        if (angle == 0 && distance > 700 && track->lap() == 3) {
+        if (angle < 5 && angle > -5 && distance > 700 && track->lap() == 3) {
             cerr << "!!BOOST!!" << endl;
             output = "BOOST";
         }
         else {
-            int thrust = 70 + 30 * speedMultiplier(distance, angle);
+            int thrust = 40 + 30 * aheadOfCheckpointThrottle(distance) + 30 * speedAngleMultiplier(angle);
             output += to_string(thrust);
         }
         return output;
