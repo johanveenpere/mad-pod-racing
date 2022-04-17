@@ -67,6 +67,10 @@ public:
     Point operator+(Point point) {
         return Point(this->x + point.first, this->y + point.second);
     }
+
+    string toString() {
+        return to_string(x) + ";" + to_string(y);
+    }
 };
 
 class Track {
@@ -152,7 +156,8 @@ public:
 class Racer {
 
     Track* track;
-    pair<int, int> previousCheckpoint, currentCheckpoint, nextCheckpoint;
+    Point position;
+    Point previousCheckpoint, currentCheckpoint, nextCheckpoint;
 
     double speedAngleMultiplier(int angle) {
         double rad = angle * pi / 180;
@@ -189,12 +194,15 @@ class Racer {
         return to_string(point.first) + " " + to_string(point.second);
     }
 
-    Point correctedCheckpoint(Point passedCheckpoint, Point nextCheckpoint) {
-        Vector translationVector = Vector(passedCheckpoint, nextCheckpoint).perpendicularVector().unitVector();
-        cerr << "translationVector: " << translationVector.x << ";" << translationVector.y << endl;
-        int direction = track->trackTurningDirection(passedCheckpoint, nextCheckpoint);
-        cerr << "track turning direction: " << direction << endl;
-        return translationVector * (direction * 600.0) + nextCheckpoint;
+    Point correctedCheckpoint(Point racerPosition, Point nextCheckpoint, double angle) {
+        double moveAmount = angle / 90.0;
+        cerr << "moveAmount: " << moveAmount << endl;
+        Vector moveVector(racerPosition, nextCheckpoint);
+        moveVector = moveVector.perpendicularVector().unitVector() * moveAmount * 1200;
+        cerr << "moveVector: " << moveVector.toString() << endl;
+        auto output = moveVector + nextCheckpoint;
+        cerr << "nextCheckpoint + moveVector: " << output.first << ";" << output.second << endl;
+        return output;
     }
 
 public:
@@ -204,7 +212,7 @@ public:
     }
 
 
-    void setNextCheckpoint(pair<int, int> point) {
+    void setNextCheckpoint(Point point) {
         if (nextCheckpoint != point) {
             previousCheckpoint = currentCheckpoint;
             currentCheckpoint = nextCheckpoint;
@@ -213,8 +221,12 @@ public:
         }
     }
 
+    void setPosition(Point point) {
+        this->position = point;
+    }
+
     string output(int distance, int angle) {
-        return outputPosition(correctedCheckpoint(currentCheckpoint, nextCheckpoint)) + " " + outputSpeed(distance, angle);
+        return outputPosition(correctedCheckpoint(position, nextCheckpoint, angle)) + " " + outputSpeed(distance, angle);
     }
 
     bool passed(pair<int, int> point) {
@@ -245,7 +257,7 @@ int main()
         cin >> opponent_x >> opponent_y; cin.ignore();
 
         pair nextCheckpoint(next_checkpoint_x, next_checkpoint_y);
-
+        racer.setPosition(Point(x, y));
         racer.setNextCheckpoint(nextCheckpoint);
 
         cout << racer.output(next_checkpoint_dist, next_checkpoint_angle) << endl;
