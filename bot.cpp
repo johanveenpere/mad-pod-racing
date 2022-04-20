@@ -10,29 +10,31 @@ using Point = pair<int, int>;
 
 const double pi = 3.141592653589793238462643383279502884197169399375105820974944;
 
+namespace util {
+    // taken from stackoverflow: https://stackoverflow.com/questions/1560492/how-to-tell-whether-a-point-is-to-the-right-or-left-side-of-a-line
+    int position(Point a, Point b, Point c) {
+        int dir = ((b.first - a.first) * (c.second - a.second) - (b.second - a.second) * (c.first - a.first));
+        if (dir > 0) return 1;
+        if (dir < 0) return 0;
+        return 0;
+    }
 
-// taken from stackoverflow: https://stackoverflow.com/questions/1560492/how-to-tell-whether-a-point-is-to-the-right-or-left-side-of-a-line
-int position(Point a, Point b, Point c) {
-    int dir = ((b.first - a.first) * (c.second - a.second) - (b.second - a.second) * (c.first - a.first));
-    if (dir > 0) return 1;
-    if (dir < 0) return 0;
-    return 0;
-}
+    pair<int, int> difference(Point point1, Point point2) {
+        return pair(point1.first - point2.first, point1.second - point2.second);
+    }
 
-pair<int, int> difference(Point point1, Point point2) {
-    return pair(point1.first - point2.first, point1.second - point2.second);
-}
+    double distance(Point point1, Point point2) {
+        auto diff = difference(point2, point1);
+        return sqrt(pow(diff.first, 2) + pow(diff.second, 2));
+    }
 
-double distance(Point point1, Point point2) {
-    auto diff = difference(point2, point1);
-    return sqrt(pow(diff.first, 2) + pow(diff.second, 2));
-}
+    double angleFrom(Point point1, Point point2, Point point3) {
+        double a = distance(point2, point3);
+        double b = distance(point2, point1);
+        double c = distance(point1, point3);
+        return acos((pow(a, 2) + pow(b, 2) - pow(c, 2)) / 2 * a * b);
+    }
 
-double angleFrom(Point point1, Point point2, Point point3) {
-    double a = distance(point2, point3);
-    double b = distance(point2, point1);
-    double c = distance(point1, point3);
-    return acos((pow(a, 2) + pow(b, 2) - pow(c, 2)) / 2 * a * b);
 }
 
 class Vector {
@@ -50,12 +52,11 @@ public:
     }
 
     Vector unitVector() {
-        double magnitude = sqrt(pow(x, 2) + pow(y, 2));
-        return Vector(x / magnitude, y / magnitude);
+        return *this / magnitude();
     }
 
     Vector(Point point1, Point point2) {
-        Point diff = difference(point2, point1);
+        Point diff = util::difference(point2, point1);
         x = diff.first;
         y = diff.second;
     }
@@ -64,12 +65,28 @@ public:
         return Vector(x * scalar, y * scalar);
     }
 
+    double operator*(Vector vec) {
+        return this->x * vec.x + this->y * vec.y;
+    }
+
+    Vector operator/(double scalar) {
+        return Vector(x / scalar, y / scalar);
+    }
+
     Point operator+(Point point) {
         return Point(this->x + point.first, this->y + point.second);
     }
 
     string toString() {
         return to_string(x) + ";" + to_string(y);
+    }
+
+    double magnitude() {
+        return sqrt(pow(x, 2) + pow(y, 2));
+    }
+
+    static double angleBetween(Vector a, Vector b) {
+        return acos((a * b) / (a.magnitude() * b.magnitude()));
     }
 };
 
@@ -148,7 +165,7 @@ public:
     int trackTurningDirection(Point point1, Point point2) {
         Point point3 = getPointAfter(point2);
         cerr << "point3: " << point3.first << ";" << point3.second << endl;
-        return position(point1, point2, point3);
+        return util::position(point1, point2, point3);
     }
 
 };
@@ -156,7 +173,7 @@ public:
 class Racer {
 
     Track* track;
-    Point position;
+    Point previousPosition, currentPosition;
     Point previousCheckpoint, currentCheckpoint, nextCheckpoint;
 
     double speedAngleMultiplier(int angle) {
@@ -177,17 +194,23 @@ class Racer {
         return speedAngleMultiplier(angle) * aheadOfCheckpointThrottle(distance);
     }
 
-    string outputSpeed(int distance, int angle) {
-        string output;
-        if (angle < 1 && angle > -1 && distance > 1000 && track->lap() == 3) {
-            cerr << "!!BOOST!!" << endl;
-            output = "BOOST";
+    string outputSpeed(int distance, int angle, double angleToOpponent, int distanceToOpponent) {
+        cerr << "distance: " << distance << endl;
+        cerr << "angle: " << angle << endl;
+        cerr << "angleToOpponent: " << angleToOpponent << endl;
+        cerr << "distanceToOpponent: " << distanceToOpponent << endl;
+        if (distanceToOpponent < 1000) {
+            cerr << "!!SHIELDS!!" << endl;
+                return "SHIELD";
+        }
+        if (angleToOpponent >  -0.1 && angleToOpponent < 0.1 && distanceToOpponent < 4000 && track->lap() > 1){
+                cerr << "!!BOOST!!" << endl;
+                return "BOOST";
         }
         else {
-            int thrust = 70 * aheadOfCheckpointThrottle(distance) + 30 * speedAngleMultiplier(angle);
-            output += to_string(thrust);
+            int thrust = 70 + 30 * speedMultiplier(distance, angle);
+            return to_string(thrust);
         }
-        return output;
     }
 
     string outputPosition(pair<int, int> point) {
@@ -203,6 +226,18 @@ class Racer {
         auto output = moveVector + nextCheckpoint;
         cerr << "nextCheckpoint + moveVector: " << output.first << ";" << output.second << endl;
         return output;
+    }
+
+    bool passed(pair<int, int> point) {
+        return previousCheckpoint == point;
+    }
+
+    double angleToOpponent(Point opponentPosition) {
+        Vector racerHeading(previousPosition, currentPosition);
+        Vector opponentDirection(currentPosition, opponentPosition);
+        double angle = Vector::angleBetween(racerHeading, opponentDirection);
+        cerr << "angle: " << angle << endl;
+        return angle;
     }
 
 public:
@@ -222,15 +257,12 @@ public:
     }
 
     void setPosition(Point point) {
-        this->position = point;
+        previousPosition = currentPosition;
+        currentPosition = point;
     }
 
-    string output(int distance, int angle) {
-        return outputPosition(correctedCheckpoint(position, nextCheckpoint, angle)) + " " + outputSpeed(distance, angle);
-    }
-
-    bool passed(pair<int, int> point) {
-        return previousCheckpoint == point;
+    string output(int distance, int angle, Point opponentPosition) {
+        return outputPosition(nextCheckpoint) + " " + outputSpeed(distance, angle, angleToOpponent(opponentPosition), util::distance(currentPosition, opponentPosition));
     }
 
 };
@@ -256,10 +288,10 @@ int main()
         int opponent_y;
         cin >> opponent_x >> opponent_y; cin.ignore();
 
-        pair nextCheckpoint(next_checkpoint_x, next_checkpoint_y);
+        Point nextCheckpoint(next_checkpoint_x, next_checkpoint_y);
         racer.setPosition(Point(x, y));
         racer.setNextCheckpoint(nextCheckpoint);
 
-        cout << racer.output(next_checkpoint_dist, next_checkpoint_angle) << endl;
+        cout << racer.output(next_checkpoint_dist, next_checkpoint_angle, Point(opponent_x, opponent_y)) << endl;
     }
 }

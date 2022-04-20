@@ -31,8 +31,13 @@ namespace tests
 		TEST_METHOD(Test_angleFrom_90deg_angle)
 		{
 			Point a(0, 0), b(0, 10), c(10, 10);
-			Assert::IsTrue(DoublesAreEqual(pi / 2, angleFrom(a, b, c)));
-			Assert::AreEqual(roundDouble(pi / 2, 4), roundDouble(angleFrom(a, b, c), 4));
+			Assert::IsTrue(DoublesAreEqual(pi / 2, util::angleFrom(a, b, c)));
+			Assert::AreEqual(roundDouble(pi / 2, 4), roundDouble(util::angleFrom(a, b, c), 4));
+		}
+
+		TEST_METHOD(TestAngleBetweenMethod) {
+			Assert::AreEqual(pi / 2, Vector::angleBetween(Vector(0, 1), Vector(1, 0)));
+
 		}
 	};
 }
